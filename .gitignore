@@ -1,0 +1,12 @@
+.vscode
+
+*.exe
+*.dll
+*.so
+*.dylib
+*.zip
+*.tar.gz
+
+config.json
+
+camera_icons/
