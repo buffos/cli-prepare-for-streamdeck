@@ -94,11 +94,11 @@ type model struct {
 	detailStyle lipgloss.Style
 
 	// Final collected data
-	searchPath   string
-	mediaType    config.MediaType
-	oscPrefixStr string
-	colorStr     string
-	widthStr     string
+	searchPath string
+	mediaType  config.MediaType
+	oscOption  config.OscPrefixOption
+	colorStr   string
+	widthStr   string
 
 	// Configuration
 	config *config.Config
@@ -159,11 +159,15 @@ func initialModel() model {
 		detailStyle:   lipgloss.NewStyle().Foreground(lipgloss.Color("#0000FF")),
 		config:        cfg,
 		// reset final data
-		searchPath:   "",
-		mediaType:    config.MediaType(0),
-		oscPrefixStr: "",
-		colorStr:     "",
-		widthStr:     "",
+		searchPath: "",
+		mediaType:  config.MediaType(0),
+		oscOption: config.OscPrefixOption{Name: "",
+			Prefix:       "",
+			AugmentIndex: false,
+			ArgumentType: config.OscConstantType,
+			ArgumentBase: 1},
+		colorStr: "",
+		widthStr: "",
 	}
 }
 
@@ -330,7 +334,7 @@ func (m model) View() string { //nosonar
 			m.promptStyle.Render("Press Enter to process or Esc to cancel"),
 			m.searchPath,
 			[]string{"Image", "Video", "Audio"}[m.mediaType],
-			m.oscPrefixStr,
+			m.oscOption.Prefix,
 			m.colorStr,
 			m.widthStr,
 		)
@@ -438,10 +442,17 @@ func (m *model) handleEnter() (tea.Model, tea.Cmd) { //nosonar
 			if !strings.HasPrefix(prefix, "/") {
 				prefix = "/" + prefix
 			}
-			m.oscPrefixStr = prefix
+			m.oscOption.Prefix = prefix
+			m.oscOption.AugmentIndex = true
+			m.oscOption.ArgumentType = config.OscConstantType
+			m.oscOption.ArgumentBase = 1
 		} else {
 			// Selected prefix
-			m.oscPrefixStr = m.config.OscPrefixOptions[m.oscPrefixIdx].Prefix
+			m.oscOption.Name = m.config.OscPrefixOptions[m.oscPrefixIdx].Name
+			m.oscOption.Prefix = m.config.OscPrefixOptions[m.oscPrefixIdx].Prefix
+			m.oscOption.AugmentIndex = m.config.OscPrefixOptions[m.oscPrefixIdx].AugmentIndex
+			m.oscOption.ArgumentType = m.config.OscPrefixOptions[m.oscPrefixIdx].ArgumentType
+			m.oscOption.ArgumentBase = m.config.OscPrefixOptions[m.oscPrefixIdx].ArgumentBase
 		}
 		m.step++
 		m.borderColor.Focus()
@@ -477,7 +488,7 @@ func (m *model) handleEnter() (tea.Model, tea.Cmd) { //nosonar
 
 	case 5: // Process files
 		width, _ := strconv.Atoi(m.widthStr)
-		err := processMediaFiles(m.searchPath, m.mediaType, m.oscPrefixStr, m.colorStr, width)
+		err := processMediaFiles(m.searchPath, m.mediaType, m.oscOption, m.colorStr, width)
 		if err != nil {
 			m.err = err
 			return m, nil

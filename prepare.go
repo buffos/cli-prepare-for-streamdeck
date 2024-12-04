@@ -17,21 +17,27 @@ import (
 
 const THUMB_WIDTH = 144
 
+type OscCommand struct {
+	OscPath  string `json:"osc_path"`
+	OscValue []any  `json:"osc_value"`
+	OscPort  int    `json:"osc_port"`
+}
+
 type MediaEntry struct {
-	Title        string `json:"title"`
-	Image        string `json:"image"`
-	ImagePressed string `json:"image_pressed"`
-	OscPath      string `json:"osc_path"`
-	OscValue     []any  `json:"osc_value"`
-	FullPath     string `json:"full_path"`
-	Script       string `json:"script"`
-	ScriptPath   string `json:"script_path"`
+	Title        string       `json:"title"`
+	Image        string       `json:"image"`
+	ImagePressed string       `json:"image_pressed"`
+	OscCommands  []OscCommand `json:"osc_commands"`
+	FullPath     string       `json:"full_path"`
+	Scripts      []string     `json:"scripts"`
+	ScriptPaths  []string     `json:"script_paths"`
+	Delays       []int        `json:"delays"`
 }
 
 type MediaConfig struct {
 	Files   []MediaEntry `json:"files"`
 	OscRoot string       `json:"osc_root_path"`
-	OscArg  string       `json:"osc_arg"`
+	OscArg  []string     `json:"osc_arg"`
 }
 
 // hexToRGBA converts a hex color string (#RRGGBB) to color.RGBA
@@ -85,7 +91,7 @@ func createResizedImage(sourcePath, targetPath string, width int) error {
 	return nil
 }
 
-func processMediaFiles(searchPath string, mediaType config.MediaType, oscPrefix string, borderColorHex string, borderWidth int) error {
+func processMediaFiles(searchPath string, mediaType config.MediaType, oscOption config.OscPrefixOption, borderColorHex string, borderWidth int) error {
 	var entries []MediaEntry
 	var validExtensions []string
 	var fullPaths []string
@@ -109,14 +115,14 @@ func processMediaFiles(searchPath string, mediaType config.MediaType, oscPrefix 
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
+		if info.IsDir() && path != searchPath {
 			return filepath.SkipDir
 		}
 
 		ext := strings.ToLower(filepath.Ext(path))
 		for _, validExt := range validExtensions {
 			if ext == validExt {
-				entry := processFile(path, mediaType, len(entries), oscPrefix, borderColor, borderWidth)
+				entry := processFile(path, mediaType, len(entries), oscOption, borderColor, borderWidth)
 				entries = append(entries, entry)
 				fullPaths = append(fullPaths, path)
 				break
@@ -132,7 +138,7 @@ func processMediaFiles(searchPath string, mediaType config.MediaType, oscPrefix 
 	config := MediaConfig{
 		Files:   entries,
 		OscRoot: "",
-		OscArg:  fmt.Sprintf("@(%s)", strings.Join(fullPaths, ", ")),
+		OscArg:  fullPaths,
 	}
 
 	jsonData, err := json.MarshalIndent(config, "", "    ")
@@ -150,21 +156,42 @@ func processMediaFiles(searchPath string, mediaType config.MediaType, oscPrefix 
 	return nil
 }
 
-func processFile(filePath string, mediaType config.MediaType, index int, oscPrefix string, borderColor color.RGBA, borderWidth int) MediaEntry {
+func processFile(filePath string, mediaType config.MediaType, index int, oscOption config.OscPrefixOption, borderColor color.RGBA, borderWidth int) MediaEntry { //nosonar
 	fileName := filepath.Base(filePath)
 	fileNameWithoutExt := strings.TrimSuffix(fileName, filepath.Ext(fileName))
 	ext := filepath.Ext(fileName)
 
 	// Ensure 2-digit index
-	indexStr := fmt.Sprintf("%02d", index)
+	indexStr := fmt.Sprintf("%02d", index+1)
+
+	var oscPath string
+	var oscValue int
+
+	if oscOption.AugmentIndex {
+		oscPath = fmt.Sprintf("%s%s", oscOption.Prefix, indexStr)
+	} else {
+		oscPath = oscOption.Prefix
+	}
+
+	if oscOption.ArgumentType == "serial" {
+		oscValue = oscOption.ArgumentBase + index
+	} else if oscOption.ArgumentType == "constant" {
+		oscValue = oscOption.ArgumentBase
+	}
+
+	oscCommand := OscCommand{
+		OscPath:  oscPath,
+		OscValue: []any{oscValue},
+		OscPort:  8000,
+	}
 
 	entry := MediaEntry{
-		Title:      fileNameWithoutExt,
-		OscPath:    fmt.Sprintf("%s%s", oscPrefix, indexStr),
-		OscValue:   []any{},
-		FullPath:   filePath,
-		Script:     "",
-		ScriptPath: "",
+		Title:       fileNameWithoutExt,
+		OscCommands: []OscCommand{oscCommand},
+		FullPath:    filePath,
+		Scripts:     []string{},
+		ScriptPaths: []string{},
+		Delays:      []int{},
 	}
 
 	switch mediaType {

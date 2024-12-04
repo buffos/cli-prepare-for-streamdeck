@@ -13,9 +13,19 @@ const (
 	AudioType
 )
 
+type OscPrefixType string
+
+const (
+	OscConstantType OscPrefixType = "constant"
+	OscSerialType   OscPrefixType = "serial"
+)
+
 type OscPrefixOption struct {
-	Name   string `json:"name"`
-	Prefix string `json:"prefix"`
+	Name         string        `json:"name"`
+	Prefix       string        `json:"prefix"`
+	AugmentIndex bool          `json:"augment_index"`
+	ArgumentType OscPrefixType `json:"argument_type"` // constant, serial
+	ArgumentBase int           `json:"argument_base"` // if constant the constant value, if serial the start value
 }
 
 type Config struct {
@@ -25,20 +35,24 @@ type Config struct {
 }
 
 var DefaultConfig = Config{
-	BorderColor: "#FF0000",
+	BorderColor: "#FFFFFF",
 	BorderWidth: 5,
 	OscPrefixOptions: []OscPrefixOption{
-		{Name: "Option 1", Prefix: "/streamdeck/option_1"},
-		{Name: "Option 2", Prefix: "/streamdeck/option_2"},
-		{Name: "Option 3", Prefix: "/streamdeck/option_3"},
-		{Name: "Custom", Prefix: ""},
+		{Name: "Option 1", Prefix: "/streamdeck/option_1", ArgumentType: "serial", ArgumentBase: 1},
+		{Name: "Option 2", Prefix: "/streamdeck/option_2", ArgumentType: "constant", ArgumentBase: 1},
+		{Name: "Option 3", Prefix: "/streamdeck/option_3", ArgumentType: "serial", ArgumentBase: 1},
+		{Name: "Custom", Prefix: "", ArgumentType: "constant", ArgumentBase: 1},
 	},
 }
 
 func LoadConfig() (*Config, error) {
 	configFile, err := os.Open("config.json")
 	if err != nil {
-		return nil, err
+		err = SaveConfig(&DefaultConfig)
+		if err != nil {
+			return nil, err
+		}
+		return &DefaultConfig, nil
 	}
 	defer configFile.Close()
 
@@ -49,4 +63,16 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+func SaveConfig(cfg *Config) error {
+	configFile, err := os.Create("config.json")
+	if err != nil {
+		return err
+	}
+	defer configFile.Close()
+
+	encoder := json.NewEncoder(configFile)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(cfg)
 }

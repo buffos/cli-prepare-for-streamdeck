@@ -34,9 +34,23 @@ The tool offers the following key functions:
 
 The application uses a configuration system that allows you to:
 
-- Specify media types (images, videos)
-- Set OSC root paths
-- Define border colors and widths for thumbnails
+- Set border colors and widths for thumbnails
+- Configure OSC (Open Sound Control) command generation with multiple options:
+  - Define multiple OSC prefix options with different behaviors
+  - Support for both constant and serial argument types
+  - Configurable base values for arguments
+  - Optional index augmentation for command generation
+
+The configuration is stored in a `config.json` file with the following main settings:
+
+- `border_color`: Hex color code for thumbnail borders (default: "#FFFFFF")
+- `border_width`: Width of the thumbnail borders in pixels (default: 5)
+- `osc_prefix_options`: Array of OSC prefix configurations:
+  - `name`: Display name for the option
+  - `prefix`: The OSC command prefix (e.g., "/streamdeck/option_1")
+  - `argument_type`: Either "constant" or "serial" for different command generation patterns
+  - `argument_base`: Starting value for arguments
+  - `augment_index`: Boolean to control index augmentation in command generation
 
 ## Requirements
 
