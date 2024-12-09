@@ -1,0 +1,67 @@
+# More info on config here: https://golangci-lint.run/usage/configuration/#config-file
+run:
+  # go: '1.23.2'
+  concurrency: 4
+  timeout: 10m
+  issues-exit-code: 1
+  tests: true
+
+output:
+  formats:
+    - format: colored-line-number
+      path: stdout
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  govet: # Tool for checking for common mistakes in Go code.
+    enable-all: true
+    settings:
+      shadow:
+        strict: true
+  dupl: # Tool for code clone detection.
+    threshold: 100
+  goconst: # Finds repeated strings that could be replaced by a constant..
+    min-len:         2
+    min-occurrences: 4
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - goconst
+    # - goimports
+    - gosec
+    - govet
+    - ineffassign
+    - gosimple
+    - staticcheck
+    - revive
+    # - unused
+    - cyclop # cyclomatic complexity.
+    - decorder
+    - dupl
+    - makezero
+    - gocritic
+    - zerologlint
+    - perfsprint
+
+issues:
+  exclude:
+    # - "G104"
+    - "G115" #  integer overflow conversion int -> uint32 (gosec)
+    - "G109" #  Potential Integer overflow made by strconv.Atoi result conversion to int16/32 (gosec)
+    - "exported func .* returns unexported type .*, which can be annoying to use"
+    - "should have a package comment"
+    - "don't use an underscore in package name"
+    - ".*missing type in composite literal.*"
+    - "declaration of \"err\" shadows declaration"
+  exclude-dirs:
+    - assets
+    - commands
+    - docs
+    - secrets
+  exclude-files:
+    - _test\.go$
+  exclude-use-default: true
+  exclude-generated: lax

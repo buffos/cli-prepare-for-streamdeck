@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -71,43 +72,28 @@ func listDirectoriesWithDetails(path string) ([]DirectoryInfo, error) {
 }
 
 type model struct {
-	// Current step in the process
-	step int
-
-	// Input fields
-	pathInput    textinput.Model
-	mediaTypeIdx int
-	oscPrefixIdx int
-	oscPrefix    textinput.Model
-	borderColor  textinput.Model
-	borderWidth  textinput.Model
-
-	// Folder selection
+	borderWidth   textinput.Model
+	pathInput     textinput.Model
+	oscPrefix     textinput.Model
+	borderColor   textinput.Model
+	err           error
+	config        *config.Config
+	titleStyle    lipgloss.Style
+	promptStyle   lipgloss.Style
+	errorStyle    lipgloss.Style
+	detailStyle   lipgloss.Style
+	searchPath    string
+	widthStr      string
+	colorStr      string
 	currentPath   string
 	availableDirs []DirectoryInfo
+	oscOption     config.OscPrefixOption
+	mediaType     config.MediaType
+	step          int
 	dirSelectIdx  int
-
-	// Styling
-	titleStyle  lipgloss.Style
-	promptStyle lipgloss.Style
-	errorStyle  lipgloss.Style
-	detailStyle lipgloss.Style
-
-	// Final collected data
-	searchPath string
-	mediaType  config.MediaType
-	oscOption  config.OscPrefixOption
-	colorStr   string
-	widthStr   string
-
-	// Configuration
-	config *config.Config
-
-	// Error handling
-	err error
-
-	// Processing state
-	done bool
+	oscPrefixIdx  int
+	mediaTypeIdx  int
+	done          bool
 }
 
 func initialModel() model {
@@ -175,10 +161,10 @@ func (m model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nosonar
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { // nolint:cyclop
 	var cmd tea.Cmd
 
-	switch msg := msg.(type) {
+	switch msg := msg.(type) { // nolint:gocritic
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
@@ -202,7 +188,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nosonar
 	}
 
 	// Handle input for path and custom OSC prefix
-	if !m.done && m.step == 0 {
+	if !m.done && m.step == 0 { //nolint:gocritic
 		m.pathInput, cmd = m.pathInput.Update(msg)
 		return m, cmd
 	} else if !m.done && m.step == 2 && m.oscPrefixIdx == len(m.config.OscPrefixOptions)-1 {
@@ -219,7 +205,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nosonar
 	return m, nil
 }
 
-func (m model) View() string { //nosonar
+func (m model) View() string { //nolint:cyclop
 	if m.err != nil {
 		return m.errorStyle.Render(fmt.Sprintf("Error: %v", m.err))
 	}
@@ -229,14 +215,14 @@ func (m model) View() string { //nosonar
 			"%s\n\n%s\n\n%s\n\n%s",
 			m.titleStyle.Render("Media Preparation Complete"),
 			m.promptStyle.Render("Successfully processed media files."),
-			m.promptStyle.Render(fmt.Sprintf("Path: %s", m.searchPath)),
+			m.promptStyle.Render("Path: "+m.searchPath),
 			m.promptStyle.Render("Press Enter to return to main menu"),
 		)
 	}
 
 	switch m.step {
 	case 0: // Directory selection
-		s := m.titleStyle.Render("StreamDeck Media Preparation") + "\n\n" //nosonar
+		s := m.titleStyle.Render("StreamDeck Media Preparation") + "\n\n" // nosonar
 		s += m.promptStyle.Render(fmt.Sprintf("Select a folder in %s:", m.currentPath)) + "\n"
 
 		for i, dir := range m.availableDirs {
@@ -272,7 +258,7 @@ func (m model) View() string { //nosonar
 		// Show details of selected item
 		if len(m.availableDirs) > 0 {
 			selected := m.availableDirs[m.dirSelectIdx]
-			s += "\n" + m.detailStyle.Render(fmt.Sprintf("Selected: %s", selected.Path))
+			s += "\n" + m.detailStyle.Render("Selected: "+selected.Path)
 		}
 
 		return s
@@ -376,7 +362,7 @@ func (m *model) handleDown() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *model) handleEnter() (tea.Model, tea.Cmd) { //nosonar
+func (m *model) handleEnter() (tea.Model, tea.Cmd) { // nolint:cyclop
 	switch m.step {
 	case 0: // Directory selection
 		if len(m.availableDirs) > 0 {
@@ -422,7 +408,7 @@ func (m *model) handleEnter() (tea.Model, tea.Cmd) { //nosonar
 			m.step++
 			return m, nil
 		} else {
-			m.err = fmt.Errorf("no directories available to select")
+			m.err = errors.New("no directories available to select")
 			return m, nil
 		}
 
@@ -436,7 +422,7 @@ func (m *model) handleEnter() (tea.Model, tea.Cmd) { //nosonar
 			// Custom prefix
 			prefix := m.oscPrefix.Value()
 			if prefix == "" {
-				m.err = fmt.Errorf("OSC prefix cannot be empty")
+				m.err = errors.New("OSC prefix cannot be empty")
 				return m, nil
 			}
 			if !strings.HasPrefix(prefix, "/") {
@@ -464,7 +450,7 @@ func (m *model) handleEnter() (tea.Model, tea.Cmd) { //nosonar
 			color = m.config.BorderColor
 		}
 		if !strings.HasPrefix(color, "#") || len(color) != 7 {
-			m.err = fmt.Errorf("invalid color format. Must be in format #RRGGBB")
+			m.err = errors.New("invalid color format. Must be in format #RRGGBB")
 			return m, nil
 		}
 		m.colorStr = color
@@ -479,7 +465,7 @@ func (m *model) handleEnter() (tea.Model, tea.Cmd) { //nosonar
 		}
 		_, err := strconv.Atoi(width)
 		if err != nil {
-			m.err = fmt.Errorf("border width must be a number")
+			m.err = errors.New("border width must be a number")
 			return m, nil
 		}
 		m.widthStr = width

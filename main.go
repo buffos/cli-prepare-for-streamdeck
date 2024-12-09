@@ -9,11 +9,11 @@ import (
 )
 
 type mainMenuModel struct {
+	titleStyle  lipgloss.Style
+	promptStyle lipgloss.Style
 	choices     []string
 	cursor      int
 	selectedCmd int
-	titleStyle  lipgloss.Style
-	promptStyle lipgloss.Style
 }
 
 func initialMainMenuModel() mainMenuModel {
@@ -35,7 +35,7 @@ func (m mainMenuModel) Init() tea.Cmd {
 }
 
 func (m mainMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
+	switch msg := msg.(type) { //nolint:gocritic
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:

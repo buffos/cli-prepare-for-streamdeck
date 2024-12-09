@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -15,7 +16,7 @@ import (
 	"github.com/disintegration/imaging"
 )
 
-const THUMB_WIDTH = 144
+const ThumbWidth = 144
 
 type OscCommand struct {
 	OscPath  string `json:"osc_path"`
@@ -44,11 +45,14 @@ type MediaConfig struct {
 func hexToRGBA(hex string) (color.RGBA, error) {
 	hex = strings.TrimPrefix(hex, "#")
 	if len(hex) != 6 {
-		return color.RGBA{}, fmt.Errorf("invalid hex color length")
+		return color.RGBA{}, errors.New("invalid hex color length")
 	}
 
 	var r, g, b uint8
-	fmt.Sscanf(hex, "%02x%02x%02x", &r, &g, &b)
+	_, err := fmt.Sscanf(hex, "%02x%02x%02x", &r, &g, &b)
+	if err != nil {
+		return color.RGBA{}, fmt.Errorf("invalid hex color: %v", err)
+	}
 	return color.RGBA{r, g, b, 255}, nil
 }
 
@@ -91,7 +95,7 @@ func createResizedImage(sourcePath, targetPath string, width int) error {
 	return nil
 }
 
-func processMediaFiles(searchPath string, mediaType config.MediaType, oscOption config.OscPrefixOption, borderColorHex string, borderWidth int) error {
+func processMediaFiles(searchPath string, mediaType config.MediaType, oscOption config.OscPrefixOption, borderColorHex string, borderWidth int) error { // nolint:cyclop
 	var entries []MediaEntry
 	var validExtensions []string
 	var fullPaths []string
@@ -147,7 +151,7 @@ func processMediaFiles(searchPath string, mediaType config.MediaType, oscOption 
 	}
 
 	jsonPath := filepath.Join(searchPath, "media_config.json")
-	err = os.WriteFile(jsonPath, jsonData, 0644)
+	err = os.WriteFile(jsonPath, jsonData, 0644) // nolint:gosec
 	if err != nil {
 		return fmt.Errorf("error saving JSON file: %v", err)
 	}
@@ -156,7 +160,7 @@ func processMediaFiles(searchPath string, mediaType config.MediaType, oscOption 
 	return nil
 }
 
-func processFile(filePath string, mediaType config.MediaType, index int, oscOption config.OscPrefixOption, borderColor color.RGBA, borderWidth int) MediaEntry { //nosonar
+func processFile(filePath string, mediaType config.MediaType, index int, oscOption config.OscPrefixOption, borderColor color.RGBA, borderWidth int) MediaEntry { // nolint:cyclop
 	fileName := filepath.Base(filePath)
 	fileNameWithoutExt := strings.TrimSuffix(fileName, filepath.Ext(fileName))
 	ext := filepath.Ext(fileName)
@@ -200,7 +204,7 @@ func processFile(filePath string, mediaType config.MediaType, index int, oscOpti
 		thumbName := fileNameWithoutExt + "_thumb" + ext
 		thumbPath := filepath.Join(filepath.Dir(filePath), thumbName)
 
-		if err := createResizedImage(filePath, thumbPath, THUMB_WIDTH); err != nil {
+		if err := createResizedImage(filePath, thumbPath, ThumbWidth); err != nil {
 			fmt.Printf("Error creating thumbnail for %s: %v\n", fileName, err)
 			return entry
 		}
@@ -274,7 +278,7 @@ func extractVideoThumbnail(videoPath, thumbnailPath string) error {
 	}
 
 	// Resize the extracted frame to thumbnail size
-	if err := createResizedImage(thumbnailPath, thumbnailPath, THUMB_WIDTH); err != nil {
+	if err := createResizedImage(thumbnailPath, thumbnailPath, ThumbWidth); err != nil {
 		return fmt.Errorf("failed to resize video thumbnail: %v", err)
 	}
 

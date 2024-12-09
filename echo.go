@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -9,15 +10,13 @@ import (
 )
 
 type echoModel struct {
-	textInput textinput.Model
-	output    string
-	err       error
-	done      bool
-
-	// Styling
+	textInput   textinput.Model
+	err         error
 	titleStyle  lipgloss.Style
 	promptStyle lipgloss.Style
 	outputStyle lipgloss.Style
+	output      string
+	done        bool
 }
 
 func initialEchoModel() echoModel {
@@ -56,7 +55,7 @@ func (m echoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			text := m.textInput.Value()
 			if text == "" {
-				m.err = fmt.Errorf("text cannot be empty")
+				m.err = errors.New("text cannot be empty")
 				return m, nil
 			}
 			m.output = text
